@@ -1,0 +1,11 @@
+D:\StudioProject\PicturesProcessing\PicturesProcessing\bin\Release\PicturesProcessing.exe.config
+D:\StudioProject\PicturesProcessing\PicturesProcessing\bin\Release\PicturesProcessing.exe
+D:\StudioProject\PicturesProcessing\PicturesProcessing\bin\Release\PicturesProcessing.pdb
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.csproj.AssemblyReference.cache
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.csproj.SuggestedBindingRedirects.cache
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.Form1.resources
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.Properties.Resources.resources
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.csproj.GenerateResource.cache
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.csproj.CoreCompileInputs.cache
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.exe
+D:\StudioProject\PicturesProcessing\PicturesProcessing\obj\Release\PicturesProcessing.pdb
