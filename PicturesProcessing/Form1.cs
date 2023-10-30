@@ -550,5 +550,463 @@ namespace PicturesProcessing
             double geometricMean = ComputeGeometricMean(img2);
             label5.Text = "GEOM Median: " + geometricMean.ToString();
         }
+
+        public static Bitmap ApplyGaussianBlur(Bitmap inputImage, int kernelSize = 3, double sigma = 1.0)
+        {
+            if (kernelSize % 2 == 0)
+            {
+                throw new ArgumentException("Kernel size must be an odd number.");
+            }
+
+            Bitmap blurredImage = new Bitmap(inputImage.Width, inputImage.Height);
+            int kernelOffset = (kernelSize - 1) / 2;
+
+            double[,] kernel = GenerateGaussianKernel(kernelSize, sigma);
+
+            using (Graphics g = Graphics.FromImage(blurredImage))
+            {
+                for (int x = 0; x < inputImage.Width; x++)
+                {
+                    for (int y = 0; y < inputImage.Height; y++)
+                    {
+                        double rSum = 0;
+                        double gSum = 0;
+                        double bSum = 0;
+                        double weightSum = 0;
+
+                        for (int kx = -kernelOffset; kx <= kernelOffset; kx++)
+                        {
+                            for (int ky = -kernelOffset; ky <= kernelOffset; ky++)
+                            {
+                                int pixelX = x + kx;
+                                int pixelY = y + ky;
+
+                                if (pixelX < 0 || pixelY < 0 || pixelX >= inputImage.Width || pixelY >= inputImage.Height)
+                                {
+                                    continue;
+                                }
+
+                                Color pixelColor = inputImage.GetPixel(pixelX, pixelY);
+
+                                rSum += kernel[kx + kernelOffset, ky + kernelOffset] * pixelColor.R;
+                                gSum += kernel[kx + kernelOffset, ky + kernelOffset] * pixelColor.G;
+                                bSum += kernel[kx + kernelOffset, ky + kernelOffset] * pixelColor.B;
+                                weightSum += kernel[kx + kernelOffset, ky + kernelOffset];
+                            }
+                        }
+
+                        int r = Convert.ToInt32(rSum / weightSum);
+                        int _g = Convert.ToInt32(gSum / weightSum);
+                        int b = Convert.ToInt32(bSum / weightSum);
+
+                        r = Math.Max(0, Math.Min(255, r));
+                        _g = Math.Max(0, Math.Min(255, _g));
+                        b = Math.Max(0, Math.Min(255, b));
+
+                        blurredImage.SetPixel(x, y, Color.FromArgb(r, _g, b));
+                    }
+                }
+            }
+
+            return blurredImage;
+        }
+
+        private static double[,] GenerateGaussianKernel(int size, double sigma)
+        {
+            int offset = (size - 1) / 2;
+            double[,] kernel = new double[size, size];
+            double sigma2 = 2 * sigma * sigma;
+            double sum = 0;
+
+            for (int x = -offset; x <= offset; x++)
+            {
+                for (int y = -offset; y <= offset; y++)
+                {
+                    double gaussianValue = (1.0 / Math.Sqrt(Math.PI * sigma2)) * Math.Exp(-(x * x + y * y) / sigma2);
+                    kernel[x + offset, y + offset] = gaussianValue;
+                    sum += gaussianValue;
+                }
+            }
+
+            // Normalize the kernel
+            for (int x = 0; x < size; x++)
+            {
+                for (int y = 0; y < size; y++)
+                {
+                    kernel[x, y] /= sum;
+                }
+            }
+
+            return kernel;
+        }
+
+        public static Bitmap ComputeGradient(Bitmap inputImage, out double[,] gradientDirections, out double[,] gradientStrengths)
+        {
+            int width = inputImage.Width;
+            int height = inputImage.Height;
+            gradientStrengths = new double[width, height];
+            gradientDirections = new double[width, height];
+
+            int[,] gx = new int[,]
+            {
+        { -1, 0, 1 },
+        { -2, 0, 2 },
+        { -1, 0, 1 }
+            };
+
+            int[,] gy = new int[,]
+            {
+        { -1, -2, -1 },
+        { 0, 0, 0 },
+        { 1, 2, 1 }
+            };
+
+            Bitmap gradientImage = new Bitmap(width, height);
+
+            for (int x = 1; x < width - 1; x++)
+            {
+                for (int y = 1; y < height - 1; y++)
+                {
+                    double gradientX = 0.0;
+                    double gradientY = 0.0;
+
+                    for (int kx = -1; kx <= 1; kx++)
+                    {
+                        for (int ky = -1; ky <= 1; ky++)
+                        {
+                            Color pixelColor = inputImage.GetPixel(x + kx, y + ky);
+                            int gray = (pixelColor.R + pixelColor.G + pixelColor.B) / 3;
+
+                            gradientX += gx[kx + 1, ky + 1] * gray;
+                            gradientY += gy[kx + 1, ky + 1] * gray;
+                        }
+                    }
+
+                    double gradientMagnitude = Math.Sqrt(gradientX * gradientX + gradientY * gradientY);
+                    double gradientDirection = Math.Atan2(gradientY, gradientX);
+
+                    int gradientColor = (int)Math.Min(255, gradientMagnitude);
+                    gradientImage.SetPixel(x, y, Color.FromArgb(gradientColor, gradientColor, gradientColor));
+
+                    gradientStrengths[x, y] = gradientMagnitude;
+                    gradientDirections[x, y] = gradientDirection;
+                }
+            }
+
+            return gradientImage;
+        }
+
+        public static Bitmap NonMaximumSuppression(Bitmap inputImage, double[,] gradientDirections, double[,] gradientStrengths)
+        {
+            int width = inputImage.Width;
+            int height = inputImage.Height;
+
+            Bitmap suppressedImage = new Bitmap(width, height);
+
+            for (int x = 1; x < width - 1; x++)
+            {
+                for (int y = 1; y < height - 1; y++)
+                {
+                    double direction = gradientDirections[x, y];
+                    double strength = gradientStrengths[x, y];
+
+                    int[] dx = { 1, 1, 0, -1, -1, -1, 0, 1 };
+                    int[] dy = { 0, 1, 1, 1, 0, -1, -1, -1 };
+
+                    int index = (int)(direction / Math.PI * 8 + 8) % 8;
+
+                    int x1 = x + dx[index];
+                    int y1 = y + dy[index];
+                    int x2 = x - dx[index];
+                    int y2 = y - dy[index];
+
+                    if ((x1 >= 0 && y1 >= 0 && x1 < width && y1 < height && strength <= gradientStrengths[x1, y1]) ||
+                        (x2 >= 0 && y2 >= 0 && x2 < width && y2 < height && strength <= gradientStrengths[x2, y2]))
+                    {
+                        suppressedImage.SetPixel(x, y, Color.Black);
+                    }
+                    else
+                    {
+                        int value = (int)Math.Min(255, strength);
+                        suppressedImage.SetPixel(x, y, Color.FromArgb(value, value, value));
+                    }
+                }
+            }
+
+            return suppressedImage;
+        }
+
+        public static Bitmap ApplyDoubleThreshold(Bitmap inputImage, double[,] gradientStrengths, double lowThreshold, double highThreshold)
+        {
+            int width = inputImage.Width;
+            int height = inputImage.Height;
+
+            Bitmap thresholdedImage = new Bitmap(width, height);
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    double strength = gradientStrengths[x, y];
+
+                    if (strength >= highThreshold)
+                    {
+                        thresholdedImage.SetPixel(x, y, Color.White); // сильные границы
+                    }
+                    else if (strength >= lowThreshold)
+                    {
+                        thresholdedImage.SetPixel(x, y, Color.FromArgb((int)strength, (int)strength, (int)strength)); // слабые границы
+                    }
+                    else
+                    {
+                        thresholdedImage.SetPixel(x, y, Color.Black); // остальные пиксели
+                    }
+                }
+            }
+
+            return thresholdedImage;
+        }
+
+        public static Bitmap ApplyHysteresis(Bitmap inputImage)
+        {
+            int width = inputImage.Width;
+            int height = inputImage.Height;
+
+            Bitmap finalImage = new Bitmap(width, height);
+            int[] dx = { -1, 0, 1, 1, 1, 0, -1, -1 };
+            int[] dy = { -1, -1, -1, 0, 1, 1, 1, 0 };
+
+            Stack<Point> strongEdges = new Stack<Point>();
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    Color pixel = inputImage.GetPixel(x, y);
+
+                    if (pixel.R == 255) // сильные границы
+                    {
+                        strongEdges.Push(new Point(x, y));
+                    }
+                }
+            }
+
+            while (strongEdges.Count > 0)
+            {
+                Point currentEdge = strongEdges.Pop();
+
+                for (int i = 0; i < 8; i++)
+                {
+                    int newX = currentEdge.X + dx[i];
+                    int newY = currentEdge.Y + dy[i];
+
+                    if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+                    {
+                        Color neighborPixel = inputImage.GetPixel(newX, newY);
+
+                        if (neighborPixel.R != 255 && neighborPixel.R != 0) // слабые границы
+                        {
+                            strongEdges.Push(new Point(newX, newY));
+                            inputImage.SetPixel(newX, newY, Color.White);
+                        }
+                    }
+                }
+            }
+
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    Color pixel = inputImage.GetPixel(x, y);
+
+                    if (pixel.R == 255)
+                    {
+                        finalImage.SetPixel(x, y, Color.White);
+                    }
+                    else
+                    {
+                        finalImage.SetPixel(x, y, Color.Black);
+                    }
+                }
+            }
+
+            return finalImage;
+        }
+
+        public static Bitmap ApplyCannyFilter(Bitmap inputImage, int gaussianKernelSize = 5, double gaussianSigma = 1.0,
+                                      double lowThreshold = 100.0, double highThreshold = 100.0)
+        {
+            // 1. Преобразование изображения в оттенки серого (если требуется)
+            Bitmap grayImage = ConvertToGrayscale(inputImage);
+
+            // 2. Фильтрация шума (размытие Гаусса)
+            Bitmap blurredImage = ApplyGaussianBlur(grayImage, gaussianKernelSize, gaussianSigma);
+
+            // 3. Вычисление градиента яркости (операторы Собеля)
+            Bitmap gradientImage;
+            double[,] gradientDirections;
+            double[,] gradientStrengths;
+            gradientImage = ComputeGradient(blurredImage, out gradientDirections, out gradientStrengths);
+
+            // 4. Подавление немаксимумов
+            Bitmap suppressedImage = NonMaximumSuppression(gradientImage, gradientDirections, gradientStrengths);
+
+            // 5. Применение двойного порога
+            Bitmap thresholdedImage = ApplyDoubleThreshold(suppressedImage, gradientStrengths, lowThreshold, highThreshold);
+
+            // 6. Гистерезис
+            Bitmap cannyImage = ApplyHysteresis(thresholdedImage);
+
+            return cannyImage;
+        }
+
+        private static Bitmap ConvertToGrayscale(Bitmap inputImage)
+        {
+            Bitmap grayImage = new Bitmap(inputImage.Width, inputImage.Height);
+
+            using (Graphics g = Graphics.FromImage(grayImage))
+            {
+                ColorMatrix colorMatrix = new ColorMatrix(
+                    new float[][]
+                    {
+                new float[] { 0.299f, 0.299f, 0.299f, 0, 0 },
+                new float[] { 0.587f, 0.587f, 0.587f, 0, 0 },
+                new float[] { 0.114f, 0.114f, 0.114f, 0, 0 },
+                new float[] { 0, 0, 0, 1, 0 },
+                new float[] { 0, 0, 0, 0, 1 },
+                    });
+                ImageAttributes attributes = new ImageAttributes();
+                attributes.SetColorMatrix(colorMatrix);
+                g.DrawImage(inputImage, new Rectangle(0, 0, inputImage.Width, inputImage.Height),
+                            0, 0, inputImage.Width, inputImage.Height, GraphicsUnit.Pixel, attributes);
+            }
+
+            return grayImage;
+        }
+
+        private void кенниToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap i1 = ApplyCannyFilter(img1);
+            img1 = i1;
+            pictureBox1.Image = i1;
+            pictureBox1.Refresh();
+        }
+
+        public static int ZeroMoment(Bitmap binaryImage)
+        {
+            int m00 = 0;
+            for (int x = 0; x < binaryImage.Width; x++)
+            {
+                for (int y = 0; y < binaryImage.Height; y++)
+                {
+                    Color pixel = binaryImage.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255) // Если пиксель белый (единица)
+                    {
+                        m00++;
+                    }
+                }
+            }
+            return m00;
+        }
+
+        public static (int m10, int m01) FirstMoment(Bitmap binaryImage)
+        {
+            int m10 = 0, m01 = 0;
+            for (int x = 0; x < binaryImage.Width; x++)
+            {
+                for (int y = 0; y < binaryImage.Height; y++)
+                {
+                    Color pixel = binaryImage.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255) // Если пиксель белый (единица)
+                    {
+                        m10 += x;
+                        m01 += y;
+                    }
+                }
+            }
+            return (m10, m01);
+        }
+
+        public static (double X_c, double Y_c) CenterOfMass(Bitmap binaryImage, double m00, double m10, double m01)
+        {
+            double X_c = (double)m10 / m00;
+            double Y_c = (double)m01 / m00;
+            return (X_c, Y_c);
+        }
+
+        public static (double mu20, double mu02, double mu11) CentralMoments(Bitmap binaryImage, double m00, double X_c, double Y_c)
+        {
+            double mu20 = 0, mu02 = 0, mu11 = 0;
+
+            for (int x = 0; x < binaryImage.Width; x++)
+            {
+                for (int y = 0; y < binaryImage.Height; y++)
+                {
+                    Color pixel = binaryImage.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255) // Если пиксель белый (единица)
+                    {
+                        mu20 += Math.Pow((x - X_c), 2);
+                        mu02 += Math.Pow((y - Y_c), 2);
+                        mu11 += (x - X_c) * (y - Y_c);
+                    }
+                }
+            }
+
+            return (mu20, mu02, mu11);
+        }
+
+        public static (double nu20, double nu02, double nu11) NormalizedCentralMoments(Bitmap binaryImage, double m00, double mu20, double mu02, double mu11)
+        {
+            double scalingFactor = Math.Pow(m00, 2.0 / 3); // Здесь степень равна 2/3, так как ранг 2
+
+            double nu20 = mu20 / scalingFactor;
+            double nu02 = mu02 / scalingFactor;
+            double nu11 = mu11 / scalingFactor;
+
+            return (nu20, nu02, nu11);
+        }
+
+        private void моментыToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            double m00 = ZeroMoment(img1);
+            (double m10, double m01) = FirstMoment(img1);
+            (double X_c, double Y_c) = CenterOfMass(img1, m00, m10, m01);
+            (double mu20, double mu02, double mu11) = CentralMoments(img1, m00, X_c, Y_c);
+            (double nu20, double nu02, double nu11) = NormalizedCentralMoments(img1, m00, mu20, mu02, mu11);
+            MessageBox.Show(
+                "Zero moment: " +
+                m00.ToString() +
+                " | " +
+                ((int)(img1.Width * img1.Height)).ToString() +
+                "\n" +
+                "First moment: [" +
+                m10.ToString() +
+                " | " +
+                m01.ToString() +
+                " ]" +
+                "\n" +
+                "Center of mass: x(" +
+                X_c.ToString() +
+                "), y(" +
+                Y_c.ToString() +
+                ")\n" +
+                "Central moments: [" +
+                mu20.ToString() +
+                " | " +
+                mu02.ToString() +
+                " | " +
+                mu11.ToString() +
+                "]\n" +
+                "Normolaized central moments: [" +
+                nu20.ToString() +
+                " | " +
+                nu02.ToString() +
+                " | " +
+                nu11.ToString(), 
+                "Moments!",
+                MessageBoxButtons.OK, 
+                MessageBoxIcon.Information
+            );
+        }
     }
 }
