@@ -1008,5 +1008,62 @@ namespace PicturesProcessing
                 MessageBoxIcon.Information
             );
         }
+
+        private void ванToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            //int initialSegmentSize = 1;
+            //int tolerance = 10;
+            //SplitAndMerge processor = new SplitAndMerge(img1, img2, initialSegmentSize, tolerance);
+            //processor.Process();
+            ////int radius = 2;
+            ////processor.SmoothEdges(radius);
+            //Bitmap final_img = processor.CreateFinalImage(initialSegmentSize);
+            //Bitmap final_img2 = processor.CreateFinalImage2();
+            //pictureBox1.Image = final_img;
+            //pictureBox2.Image = final_img2;
+            //pictureBox1.Refresh();
+            //pictureBox2.Refresh();
+            int initialSegmentSize = 1;
+            int tolerance = 10;
+            SplitAndMerge processor = new SplitAndMerge(img1, img2, initialSegmentSize, tolerance);
+            pictureBox1.Image = processor.ProcessImage(img1);
+            pictureBox1.Refresh();
+            //processor.Process();
+            Bitmap final_img2 = processor.CreateFinalImage2();
+            pictureBox2.Image = final_img2;
+            pictureBox2.Refresh();
+
+            List<List<Rectangle>> list = processor.FindObjects();
+            MessageBox.Show(
+                (list.Count).ToString(),
+                " | Count!",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+        }
+
+        private void туToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            int initialSegmentSize = 4;
+            int tolerance = 3;
+            SplitAndMerge processor = new SplitAndMerge(img1, img2, initialSegmentSize, tolerance);
+            pictureBox1.Image = processor.ProcessImage(img1);
+            pictureBox1.Refresh();
+            processor.Process();
+
+            List<List<Rectangle>> list = processor.FindObjects();
+            MessageBox.Show(
+                (list.Count).ToString(),
+                " | Count!",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information
+            );
+
+            Bitmap final_img2 = processor.CreateFinalImage2();
+            pictureBox2.Image = final_img2;
+            pictureBox2.Refresh();
+        }
     }
+
+
 }
