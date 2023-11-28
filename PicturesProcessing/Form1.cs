@@ -1062,6 +1062,196 @@ namespace PicturesProcessing
             Bitmap final_img2 = processor.CreateFinalImage2();
             pictureBox2.Image = final_img2;
             pictureBox2.Refresh();
+            List<Bitmap> list_objects = processor.ExtractObjectsBitmap(img1, list);
+            List<Bitmap> list_white_objects = processor.ExtractWhiteObjectsBitmap(img1, list);
+            processor.SaveBitmapListToLocal(list_objects);
+            processor.WriteTextToFile("./output.txt", CalculateHu(list_white_objects));
+        }
+
+        private string CalculateHu(List<Bitmap> list_imgs)
+        {
+            string result = "";
+            int number = 1;
+            foreach (Bitmap img in list_imgs)
+            {
+                result += "Object: №";
+                result += number.ToString();
+                result += "\n";
+                number++;
+                result += "H1: ";
+                result += CalculateHu1(img);
+                result += "\n";
+                result += "H2: ";
+                result += CalculateHu2(img);
+                result += "\n";
+                result += "H3: ";
+                result += CalculateHu3(img);
+                result += "\n";
+                result += "H4: ";
+                result += CalculateHu4(img);
+                result += "\n";
+                result += "H5: ";
+                result += CalculateHu5(img);
+                result += "\n";
+                result += "H6: ";
+                result += CalculateHu6(img);
+                result += "\n";
+                result += "H7: ";
+                result += CalculateHu7(img);
+                result += "\n";
+                result += "\n";
+                result += "\n";
+            }
+            return result;
+        }
+
+        private void моментыHuToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private double CalculateSpatialMoment(Bitmap image, int i, int j)
+        {
+            double moment = 0.0;
+            for (int x = 0; x < image.Width; x++)
+            {
+                for (int y = 0; y < image.Height; y++)
+                {
+                    Color pixel = image.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255)
+                    {
+                        moment += Math.Pow(x, i) * Math.Pow(y, j);
+                    }
+                }
+            }
+            return moment;
+        }
+
+        private (double x, double y) CalculateCenterOfMass(Bitmap image)
+        {
+            double m00 = CalculateSpatialMoment(image, 0, 0);
+            double m10 = CalculateSpatialMoment(image, 1, 0);
+            double m01 = CalculateSpatialMoment(image, 0, 1);
+
+            double centerX = m10 / m00;
+            double centerY = m01 / m00;
+
+            return (centerX, centerY);
+        }
+
+        private double CalculateCentralMoment(Bitmap image, int i, int j)
+        {
+            (double xCenter, double yCenter) = CalculateCenterOfMass(image);
+
+            double moment = 0.0;
+            for (int x = 0; x < image.Width; x++)
+            {
+                for (int y = 0; y < image.Height; y++)
+                {
+                    Color pixel = image.GetPixel(x, y);
+                    if (pixel.R == 255 && pixel.G == 255 && pixel.B == 255)
+                    {
+                        moment += Math.Pow(x - xCenter, i) * Math.Pow(y - yCenter, j);
+                    }
+                }
+            }
+            return moment;
+        }
+
+        public double CalculateHu1(Bitmap image)
+        {
+            double mu20 = CalculateCentralMoment(image, 2, 0);
+            double mu02 = CalculateCentralMoment(image, 0, 2);
+            double Hu1 = mu20 + mu02;
+
+            return Hu1;
+        }
+
+        public double CalculateHu2(Bitmap image)
+        {
+            double mu20 = CalculateCentralMoment(image, 2, 0);
+            double mu02 = CalculateCentralMoment(image, 0, 2);
+            double mu11 = CalculateCentralMoment(image, 1, 1);
+
+            double Hu2 = (mu20 - mu02) * (mu20 - mu02) + 4 * mu11 * mu11;
+
+            return Hu2;
+        }
+
+        public double CalculateHu3(Bitmap image)
+        {
+            double mu30 = CalculateCentralMoment(image, 3, 0);
+            double mu12 = CalculateCentralMoment(image, 1, 2);
+            double mu21 = CalculateCentralMoment(image, 2, 1);
+            double mu03 = CalculateCentralMoment(image, 0, 3);
+
+            double Hu3 = Math.Pow(mu30 - 3 * mu12, 2) + Math.Pow(3 * mu21 - mu03, 2);
+
+            return Hu3;
+        }
+
+        public double CalculateHu4(Bitmap image)
+        {
+            double mu30 = CalculateCentralMoment(image, 3, 0);
+            double mu12 = CalculateCentralMoment(image, 1, 2);
+            double mu21 = CalculateCentralMoment(image, 2, 1);
+            double mu03 = CalculateCentralMoment(image, 0, 3);
+
+            double Hu4 = Math.Pow(mu30 + mu12, 2) + Math.Pow(mu21 + mu03, 2);
+
+            return Hu4;
+        }
+
+        public double CalculateHu5(Bitmap image)
+        {
+            double mu30 = CalculateCentralMoment(image, 3, 0);
+            double mu12 = CalculateCentralMoment(image, 1, 2);
+            double mu21 = CalculateCentralMoment(image, 2, 1);
+            double mu03 = CalculateCentralMoment(image, 0, 3);
+
+            double part1 = (mu30 - 3 * mu12) * (mu30 + mu12);
+            double part2 = (3 * mu21 - mu03) * (mu21 + mu03);
+            double part3 = (Math.Pow(mu30 + mu12, 2) - 3 * Math.Pow(mu21 + mu03, 2));
+            double part4 = (3 * Math.Pow(mu30 + mu12, 2) - Math.Pow(mu21 + mu03, 2));
+
+            double Hu5 = part1 * part3 + part2 * part4;
+
+            return Hu5;
+        }
+
+        public double CalculateHu6(Bitmap image)
+        {
+            double mu20 = CalculateCentralMoment(image, 2, 0);
+            double mu02 = CalculateCentralMoment(image, 0, 2);
+            double mu11 = CalculateCentralMoment(image, 1, 1);
+            double mu30 = CalculateCentralMoment(image, 3, 0);
+            double mu12 = CalculateCentralMoment(image, 1, 2);
+            double mu21 = CalculateCentralMoment(image, 2, 1);
+            double mu03 = CalculateCentralMoment(image, 0, 3);
+
+            double part1 = (mu20 - mu02) * (Math.Pow(mu30 + mu12, 2) - Math.Pow(mu21 + mu03, 2));
+            double part2 = 4 * mu11 * (mu30 + mu12) * (mu21 + mu03);
+
+            double Hu6 = part1 + part2;
+
+            return Hu6;
+        }
+
+        public double CalculateHu7(Bitmap image)
+        {
+            double mu30 = CalculateCentralMoment(image, 3, 0);
+            double mu12 = CalculateCentralMoment(image, 1, 2);
+            double mu21 = CalculateCentralMoment(image, 2, 1);
+            double mu03 = CalculateCentralMoment(image, 0, 3);
+
+            double part1 = (3 * mu21 - mu03) * (mu30 + mu12);
+            double part2 = (Math.Pow(mu30 + mu12, 2) - 3 * Math.Pow(mu21 + mu03, 2));
+            double part3 = (mu30 - 3 * mu12) * (mu21 + mu03);
+            double part4 = (3 * Math.Pow(mu30 + mu12, 2) - Math.Pow(mu21 + mu03, 2));
+
+            double Hu7 = part1 * part2 - part3 * part4;
+
+            return Hu7;
         }
     }
 

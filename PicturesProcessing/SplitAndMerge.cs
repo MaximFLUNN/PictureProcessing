@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using System.IO;
+using System.Drawing.Imaging;
 
 public class SplitAndMerge
 {
@@ -525,12 +527,14 @@ public class SplitAndMerge
         //g.DrawLine(pen, x, y, x, Clamp(y + height, 0, image2.Height - 1));
         //g.DrawLine(pen, Clamp(x + width, 0, image2.Width - 1), y, Clamp(x + width, 0, image2.Width - 1), Clamp(y + height, 0, image2.Height - 1));
         //g.DrawLine(pen, x, Clamp(y + height, 0, image2.Height - 1), Clamp(x + width, 0, image2.Width - 1), Clamp(y + height, 0, image2.Height - 1));
+        //List<Rectangle> firstObject0 = objects[0];
         //List<Rectangle> firstObject1 = objects[1];
         //List<Rectangle> firstObject2 = objects[2];
         //List<Rectangle> firstObject3 = objects[3];
         //List<Rectangle> firstObject4 = objects[4];
         //List<Rectangle> firstObject5 = objects[5];
-        //drawRect(firstObject1, Color.Red);
+        //drawRect(firstObject0, Color.Green);
+        //drawRect(firstObject1, Color.RosyBrown);
         //drawRect(firstObject2, Color.Purple);
         //drawRect(firstObject3, Color.Pink);
         //drawRect(firstObject4, Color.PapayaWhip);
@@ -561,5 +565,108 @@ public class SplitAndMerge
             g.DrawLine(pen, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
             g.DrawLine(pen, rectangle.X, Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1), Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
         }
+    }
+
+    private Bitmap drawRectInImage(List<Rectangle> firstObject, Color col, Bitmap image)
+    {
+        foreach (Rectangle rectangle in firstObject)
+        {
+            Graphics g = Graphics.FromImage(image);
+            Pen pen = new Pen(col);
+            g.DrawLine(pen, rectangle.X, rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), rectangle.Y);
+            g.DrawLine(pen, rectangle.X, rectangle.Y, rectangle.X, Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+            g.DrawLine(pen, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+            g.DrawLine(pen, rectangle.X, Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1), Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+        }
+
+        return image;
+    }
+
+    private Bitmap drawRectangle(List<Rectangle> firstObject, Color col, Bitmap image)
+    {
+        foreach (Rectangle rectangle in firstObject)
+        {
+            Graphics g = Graphics.FromImage(image);
+            Pen pen = new Pen(col);
+            //for (int x = rectangle.X; x < rectangle.Width; x++)
+            //{
+            //    for (int y = rectangle.Y; y < rectangle.Height; y++)
+            //    {
+
+            //    }
+            //}
+            //Point point1 = new Point(rectangle.X, rectangle.Y);
+            //Point point2 = new Point(rectangle.X + rectangle.Width, rectangle.Y);
+            //Point point3 = new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height);
+            //Point point4 = new Point(rectangle.X, rectangle.Y + rectangle.Height);
+            //Point[] Points =
+            // {
+            //     point1,
+            //     point2,
+            //     point3,
+            //     point4
+            // };
+
+            //g.DrawPolygon(pen, Points);
+            g.FillRectangle(Brushes.White, rectangle);
+            //g.DrawRectangle(pen, rectangle.X, rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+            //g.DrawLine(pen, rectangle.X, rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), rectangle.Y);
+            //g.DrawLine(pen, rectangle.X, rectangle.Y, rectangle.X, Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+            //g.DrawLine(pen, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), rectangle.Y, Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+            //g.DrawLine(pen, rectangle.X, Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1), Clamp(rectangle.X + rectangle.Width, 0, image2.Width - 1), Clamp(rectangle.Y + rectangle.Height, 0, image2.Height - 1));
+        }
+
+        return image;
+    }
+
+    public List<Bitmap> ExtractObjectsBitmap(Bitmap img1, List<List<Rectangle>> objectsList)
+    {
+        List<Bitmap> extractedBitmaps = new List<Bitmap>();
+        foreach (List<Rectangle> objectRectangles in objectsList)
+        {
+            Bitmap newBitmap = new Bitmap(img1.Width, img1.Height);
+            using (Graphics graphics = Graphics.FromImage(newBitmap))
+            {
+                graphics.Clear(Color.Black);
+            }
+            newBitmap = drawRectInImage(objectRectangles, Color.Red, newBitmap);
+            extractedBitmaps.Add(newBitmap);
+        }
+
+        return extractedBitmaps;
+    }
+
+    public List<Bitmap> ExtractWhiteObjectsBitmap(Bitmap img1, List<List<Rectangle>> objectsList)
+    {
+        List<Bitmap> extractedBitmaps = new List<Bitmap>();
+        foreach (List<Rectangle> objectRectangles in objectsList)
+        {
+            Bitmap newBitmap = new Bitmap(img1.Width, img1.Height);
+            using (Graphics graphics = Graphics.FromImage(newBitmap))
+            {
+                graphics.Clear(Color.Black);
+            }
+            newBitmap = drawRectangle(objectRectangles, Color.White, newBitmap);
+            extractedBitmaps.Add(newBitmap);
+        }
+
+        return extractedBitmaps;
+    }
+
+    public void SaveBitmapListToLocal(List<Bitmap> images, string prefix = "image")
+    {
+        string appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        for (int i = 0; i < images.Count; i++)
+        {
+            string fileName = $"{prefix}_{i}.png";
+            string filePath = Path.Combine(appDirectory, fileName);
+            images[i].Save(filePath, ImageFormat.Png);
+        }
+    }
+
+    public void WriteTextToFile(string fileName, string text)
+    {
+        // Перезаписать файл или создать новый и записать текст
+        File.WriteAllText(fileName, text);
     }
 }
